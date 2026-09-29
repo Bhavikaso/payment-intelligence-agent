@@ -1,0 +1,23 @@
+server.port: 8080
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/payments_ai
+    username: postgres
+    password: postgres
+  jpa.hibernate.ddl-auto: update
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat.options.model: gpt-4o-mini
+      embedding.options.model: text-embedding-3-small
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        dimensions: 1536
+management:
+  endpoints.web.exposure.include: health,metrics,prometheus
+  metrics.tags.application: payment-intelligence-agent
+logging.level.com.payments.agent: DEBUG
+payments:
+  agent:
+    use-local-ollama: false # set true to use ollama instead of OpenAI
