@@ -1,0 +1,13 @@
+curl -X POST http://localhost:8080/api/v1/payments/ingest -H "Content-Type: application/json" -d '{
+  "transactionId":"txn_123","mti":"1100","panLast4":"1001","merchantId":"merch_monzo","merchantName":"Monzo Merchant","amount":49.99,"currency":"GBP","responseCode":"05","declineReason":"EXPIRED_CARD","cardExpiry":"1124","tokenized":true,"tokenStatus":"EXPIRED","timestamp":"2024-01-15T10:00:00Z","rawIso8583":"MTI=1100 PAN=... RC=05"
+}'
+
+
+
+curl -X POST http://localhost:8080/api/v1/payments/ingest -H "Content-Type: application/json" -d '{
+  "transactionId":"txn_124","mti":"1200","panLast4":"1040","merchantId":"merch_adyen","merchantName":"Adyen Merchant","amount":90.99,"currency":"USD","responseCode":"05","declineReason":"INSUFFICIENT_FUNDS","cardExpiry":"1134","tokenized":true,"tokenStatus":"ACTIVE","timestamp":"2024-03-23T10:00:00Z","rawIso8583":"MTI=1200 PAN=... RC=05"
+}'
+
+
+
+curl -X POST http://localhost:8080/api/v1/payments/explain -H "Content-Type: application/json" -d '{...same...}'

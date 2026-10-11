@@ -3,30 +3,39 @@ package com.payments.agent.service;
 import com.payments.agent.model.AuthTransaction;
 import com.payments.agent.tools.CardRefresherTool;
 import com.payments.agent.tools.TokenVaultTool;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
 
-@Service @Slf4j @RequiredArgsConstructor
+@Service @Slf4j
 public class PaymentExplainerService {
 
   private final VectorStore vectorStore;
-  private final ChatClient.Builder chatClientBuilder;
+  private final ObjectProvider<ChatClient.Builder> chatClientBuilderProvider;
   private final CardRefresherTool cardRefresherTool;
   private final TokenVaultTool tokenVaultTool;
 
-  public String explainDecline(AuthTransaction txn) {
+    public PaymentExplainerService(VectorStore vectorStore, ObjectProvider<ChatClient.Builder> chatClientBuilderProvider, CardRefresherTool cardRefresherTool, TokenVaultTool tokenVaultTool) {
+        this.vectorStore = vectorStore;
+        this.chatClientBuilderProvider = chatClientBuilderProvider;
+        this.cardRefresherTool = cardRefresherTool;
+        this.tokenVaultTool = tokenVaultTool;
+    }
+
+    public String explainDecline(AuthTransaction txn) {
     // 1. RAG - find similar past declines
-    List<Document> similar = vectorStore.similaritySearch(
-      "Decline reason: " + txn.getDeclineReason() + " merchant: " + txn.getMerchantName() + " amount: " + txn.getAmount()
+    String searchQuery = String.format(
+      "Decline reason: %s merchant: %s amount: %.2f",
+      txn.getDeclineReason(), txn.getMerchantName(), txn.getAmount()
     );
-    String context = similar.stream().map(Document::getContent).reduce("", (a,b) -> a + "\n" + b);
+    List<Document> similar = vectorStore.similaritySearch(searchQuery);
+    String context = similar.stream().map(Document::getFormattedContent).reduce("", (a,b) -> ((String) a).isEmpty()?b:a + "\n" + b);
 
     // 2. Check tools - real payments logic you know
     String refreshedCard = cardRefresherTool.checkUpdatedCard(txn.getPanLast4(), txn.getCardExpiry());
@@ -48,8 +57,11 @@ public class PaymentExplainerService {
       - Provide merchant-friendly action, not just bank code.
       - Be concise, production-grade explanation.
       """;
-
-    return chatClientBuilder.build().prompt()
+      ChatClient.Builder builder = chatClientBuilderProvider.getIfAvailable();
+      if (builder == null) {
+        throw new IllegalStateException("ChatClient.Builder not available");
+      }
+    return builder.build().prompt()
       .system("You are a payments expert. You explain declines for merchants.")
       .user(u -> u.text(prompt).params(Map.of(
         "txn", txn.toString(),
@@ -61,10 +73,15 @@ public class PaymentExplainerService {
   }
 
   public void ingestForRAG(AuthTransaction txn) {
+    String formattedTxn = String.format(
+      "TXN %s: MTI %s Merchant %s Amount %.2f Response %s Reason %s Token %s Expiry %s Raw: %s",
+      txn.getTransactionId(), txn.getMti(), txn.getMerchantName(), txn.getAmount(),
+      txn.getResponseCode(), txn.getDeclineReason(), txn.getTokenStatus(), txn.getCardExpiry(), txn.getRawIso8583()
+    );
+    log.info("Ingesting transaction: {}", formattedTxn);
+
     Document doc = new Document(
-      String.format("TXN %s: MTI %s Merchant %s Amount %.2f Response %s Reason %s Token %s Expiry %s Raw: %s",
-        txn.getTransactionId(), txn.getMti(), txn.getMerchantName(), txn.getAmount(),
-        txn.getResponseCode(), txn.getDeclineReason(), txn.getTokenStatus(), txn.getCardExpiry(), txn.getRawIso8583()),
+      formattedTxn,
       Map.of("transactionId", txn.getTransactionId(), "responseCode", txn.getResponseCode())
     );
     vectorStore.add(List.of(doc));

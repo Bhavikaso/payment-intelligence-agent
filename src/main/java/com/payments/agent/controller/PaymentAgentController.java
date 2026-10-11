@@ -5,15 +5,19 @@ import com.payments.agent.service.PaymentExplainerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-@RestController @RequestMapping("/api/v1/payments") @RequiredArgsConstructor
+@RestController @RequestMapping("/api/v1/payments")
 public class PaymentAgentController {
 
   private final PaymentExplainerService explainerService;
 
-  @PostMapping("/ingest")
+    public PaymentAgentController(PaymentExplainerService explainerService) {
+        this.explainerService = explainerService;
+    }
+
+    @PostMapping("/ingest")
   public String ingest(@RequestBody AuthTransaction txn) {
     explainerService.ingestForRAG(txn);
-    return "Ingested " + txn.getTransactionId();
+    return "Ingested " + txn;
   }
 
   @PostMapping("/explain")

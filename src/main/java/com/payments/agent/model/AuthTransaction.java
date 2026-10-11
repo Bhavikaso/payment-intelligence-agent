@@ -19,4 +19,5 @@ public class AuthTransaction {
   String tokenStatus; // ACTIVE, SUSPENDED, EXPIRED
   Instant timestamp;
   String rawIso8583; // for RAG context
+
 }

@@ -4,20 +4,37 @@ spring:
     url: jdbc:postgresql://localhost:5432/payments_ai
     username: postgres
     password: postgres
-  jpa.hibernate.ddl-auto: update
+  jpa:
+    hibernate.ddl-auto: update
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
-      chat.options.model: gpt-4o-mini
-      embedding.options.model: text-embedding-3-small
+      chat:
+        enabled: false
+        options:
+          model: gpt-4o-mini
+      embedding:
+        enabled: false
+        options:
+          model: text-embedding-3-small
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        enabled: true
+        options:
+          model: llama3.1:8b
+      embedding:
+        enabled: true
+        options:
+          model: nomic-embed-text
     vectorstore:
       pgvector:
         initialize-schema: true
-        dimensions: 1536
+        dimensions: 768
 management:
   endpoints.web.exposure.include: health,metrics,prometheus
   metrics.tags.application: payment-intelligence-agent
 logging.level.com.payments.agent: DEBUG
-payments:
-  agent:
-    use-local-ollama: false # set true to use ollama instead of OpenAI
+#payments:
+#  agent:
+#    use-local-ollama: false # set true to use ollama instead of OpenAI
